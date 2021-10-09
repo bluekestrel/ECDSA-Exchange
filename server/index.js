@@ -17,19 +17,16 @@ function random_balance(min, max) {
 }
 
 function generate_balances_and_keys() {
-  let balances = [];
+  let balances = {};
   let keys = [];
   for (let i = 0; i < INIT_BALANCE_LEN; i++) {
     // Create the public/private key pair, and generate a balance
     const new_key = ec.genKeyPair();
-    const pubkey = new_key.getPublic().encode('hex');
+    const pubkey = new_key.getPublic().encode('hex').toString(16);
     const privkey = new_key.getPrivate().toString(16);
     const init_balance = random_balance(10, 100);
 
-    balances.push({
-      'id': pubkey,
-      'balance': init_balance
-    });
+    balances[pubkey] = init_balance;
     keys.push({
       'publickey' : pubkey,
       'privatekey': privkey
@@ -39,19 +36,13 @@ function generate_balances_and_keys() {
   return {balances, keys};
 }
 
-/*
-const balances = {
-  "1": 100,
-  "2": 50,
-  "3": 75,
-}
-*/
-
 function print_accounts() {
   console.log("\nAvailable Accounts\n====================");
-  for (let i = 0; i < balances.length; i++) {
-    let str_to_print = `(${i}) ${balances[i].id} (${balances[i].balance} ETH)`;
+  let i = 0;
+  for (let key in balances) {
+    let str_to_print = `(${i}) ${key} (${balances[key]} ETH)`;
     console.log(str_to_print);
+    i++;
   }
 
   console.log("\nPrivate Keys\n====================");
@@ -59,6 +50,16 @@ function print_accounts() {
     let str_to_print = `(${i}) ${keys[i].privatekey}`
     console.log(str_to_print);
   }
+}
+
+function verify_account(publickey, privatekey) {
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i]. publickey === publickey && keys[i].privatekey === privatekey) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 let {balances, keys} = generate_balances_and_keys();
@@ -70,17 +71,25 @@ app.get('/balance/:address', (req, res) => {
 });
 
 app.post('/send', (req, res) => {
-  const {sender, recipient, amount} = req.body;
-  balances[sender] -= amount;
-  balances[recipient] = (balances[recipient] || 0) + +amount; // double + ?
-  res.send({ balance: balances[sender] });
+  const {sender, recipient, amount, privkey} = req.body;
+  console.log(req.body);
+
+  if (balances[sender] >= amount) {
+    if (!verify_account(sender, privkey)) {
+      res.send({ balance: 'Public/Private Key(s) not recognized' });
+      return;
+    }
+
+    balances[sender] -= amount;
+    balances[recipient] = (balances[recipient] || 0) + +amount;
+    res.send({ balance: balances[sender] });
+  }
+  else {
+    res.send({ balance: 'Balance too low' });
+  }
 });
 
 app.listen(port, () => {
   console.log(`Listening on port ${port}!`);
-  // TODO: can generate balances here or I guess just outside any of the express statements as well,
-  //       but need to log the account 'id' i.e. public key w/ balance and corresponding private keys
-  // (which means the private key needs to be saved off to some other value and mapped accordingly)
-
   print_accounts();
 });
