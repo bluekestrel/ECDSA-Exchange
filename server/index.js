@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const EC = require('elliptic').ec;
+const SHA256 = require('crypto-js/sha256');
 
 const app = express();
 const ec = new EC('secp256k1');
@@ -52,14 +53,22 @@ function print_accounts() {
   }
 }
 
-function verify_account(publickey, privatekey) {
-  for (let i = 0; i < keys.length; i++) {
-    if (keys[i]. publickey === publickey && keys[i].privatekey === privatekey) {
-      return true;
-    }
+function verify_account(publickey, message, signature) {
+  let key = null;
+  try {
+    key = ec.keyFromPublic(publickey, 'hex');
   }
-
-  return false;
+  catch {
+    return false;
+  }
+  const msg_hash = SHA256(message).toString();
+  console.log(signature);
+  try {
+    return key.verify(msg_hash, signature);
+  }
+  catch {
+    return false;
+  }
 }
 
 let {balances, keys} = generate_balances_and_keys();
@@ -71,12 +80,12 @@ app.get('/balance/:address', (req, res) => {
 });
 
 app.post('/send', (req, res) => {
-  const {sender, recipient, amount, privkey} = req.body;
+  const {sender, recipient, amount, message, sign_obj} = req.body;
   console.log(req.body);
 
   if (balances[sender] >= amount) {
-    if (!verify_account(sender, privkey)) {
-      res.send({ balance: 'Public/Private Key(s) not recognized' });
+    if (!verify_account(sender, message, sign_obj['signature'])) {
+      res.send({ balance: 'Public key does not match signature' });
       return;
     }
 
