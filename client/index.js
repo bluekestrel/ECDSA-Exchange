@@ -20,6 +20,9 @@ document.getElementById("transfer-amount").addEventListener('click', () => {
   const amount = document.getElementById("send-amount").value;
   const recipient = document.getElementById("recipient").value;
 
+  /* For now just send private key over, later attempt to add digital signature generation client-side
+   * so that only the signature has to be sent to the server and not the private key itself
+   */
   const body = JSON.stringify({
     sender, amount, recipient
   });
