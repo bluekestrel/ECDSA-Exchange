@@ -53,7 +53,7 @@ function print_accounts() {
   }
 }
 
-function verify_account(publickey, message, signature) {
+function verify_account(publickey, message_hash, signature) {
   let key = null;
   try {
     key = ec.keyFromPublic(publickey, 'hex');
@@ -61,10 +61,9 @@ function verify_account(publickey, message, signature) {
   catch {
     return false;
   }
-  const msg_hash = SHA256(message).toString();
-  console.log(signature);
+
   try {
-    return key.verify(msg_hash, signature);
+    return key.verify(message_hash, signature);
   }
   catch {
     return false;
@@ -80,11 +79,11 @@ app.get('/balance/:address', (req, res) => {
 });
 
 app.post('/send', (req, res) => {
-  const {sender, recipient, amount, message, sign_obj} = req.body;
+  const {sender, recipient, amount, message_hash, sign_obj} = req.body;
   console.log(req.body);
 
   if (balances[sender] >= amount) {
-    if (!verify_account(sender, message, sign_obj['signature'])) {
+    if (!verify_account(sender, message_hash, sign_obj['signature'])) {
       res.send({ balance: 'Public key does not match signature' });
       return;
     }
